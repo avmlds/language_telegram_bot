@@ -1,0 +1,21 @@
+version: "2"
+
+volumes:
+  postgres-bot:
+
+services:
+  postgres:
+    image: postgres:12
+    volumes:
+      - postgres-bot:/var/lib/postgresql/data
+    env_file:
+      - .env
+    expose:
+      - "5432"
+    ports:
+      - "127.0.0.1:5432:5432"
+  backend:
+    build: bot/
+    restart: always
+    env_file:
+      - .env

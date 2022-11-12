@@ -1,0 +1,106 @@
+#!/usr/bin/env python3.9
+import click
+
+from prettytable import PrettyTable
+
+from app.controllers import Keyboard
+from app.controllers.dictionary_controller import DictionaryController
+from app.dev_tools import en_ru_3k_words, kuskas_words
+
+
+@click.group()
+def cli():
+    """Management tool for language bot."""
+    pass
+
+
+@cli.group("dictionary")
+def dictionary():
+    """Manage dictionaries."""
+    pass
+
+
+@dictionary.command("add")
+@click.argument("title", required=True)
+@click.option("--description", required=False, default="Default dictionary")
+@click.option("--paid", is_flag=True, default=True, help="Create paid/free dictionary")
+@click.option("--price", required=False, default=0)
+def add_dictionary(title, description, paid, price):
+    click.confirm(
+            "Dictionary title must be same as Keyboard button!"
+            "Do you want to continue?", abort=True
+    )
+    dictionary_controller = DictionaryController()
+    dictionary_model = dictionary_controller.create_dictionary(
+        title=title,
+        description=description,
+        is_paid=paid,
+        price=price
+    )
+    print(
+        f'Dictionary(id={dictionary_model.id}, title="{dictionary_model.title}")'
+    )
+
+
+@dictionary.command("show")
+def show_dictionaries():
+    table = PrettyTable()
+    table.field_names = ["id", "title", "description", "is_paid", "price", "created_at"]
+
+    dictionary_controller = DictionaryController()
+    for dictionary_ in dictionary_controller.all_dictionaries(limit=1000):
+        table.add_row(
+            (
+                dictionary_.id,
+                dictionary_.title,
+                dictionary_.description,
+                dictionary_.is_paid,
+                dictionary_.price,
+                dictionary_.created_at
+            )
+        )
+    print(table)
+
+
+@dictionary.command("delete")
+@click.argument("id_", required=True)
+def delete_dictionary(id_):
+    click.confirm(f"Are you sure to delete dictionary with id = {id_}", abort=True)
+    dictionary_controller = DictionaryController()
+    for user in dictionary_controller.all_dictionary_users(limit=1_000_000):
+        print(f"Deleting dictionary user {user.id}")
+        dictionary_controller.delete_dictionary_user(user)
+
+    print(f"Deleting dictionary {id_}")
+    dictionary_controller.delete_dictionary(id_)
+    print("Success")
+
+
+@dictionary.group("content")
+def dictionary_content():
+    """Add content to dictionary"""
+    pass
+
+
+@dictionary_content.command("add")
+@click.argument("dictionary_name")
+def fill_dictionary_en_ru(dictionary_name):
+    if dictionary_name == Keyboard.EN_RU_DICTIONARY_3K:
+        en_ru_3k_words.main(6)
+
+
+@cli.group("translations")
+def translations():
+    """Manage translations."""
+    pass
+
+
+@translations.command("add")
+@click.argument("user_id")
+def fill_dictionary_en_ru(user_id):
+    if user_id == "271812586":
+        kuskas_words.main()
+
+
+if __name__ == "__main__":
+    cli()
