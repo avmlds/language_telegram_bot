@@ -149,7 +149,6 @@ class DictionaryController(BaseController):
         translation_rows = self.get_dictionary_words(user_id=user_id, translation=word)  # user_id, id
 
         rows = self.get_dictionary_knowledge_rows(user_id, word_rows, translation_rows)
-        logger.info(rows)
         RewardController.modify_knowledge(rows, reward_type)
         self._connection.commit()
 
