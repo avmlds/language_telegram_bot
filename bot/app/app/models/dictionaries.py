@@ -15,6 +15,17 @@ from sqlalchemy import (
 from app.database.base_class import Base
 
 
+class UserDictionaryKnowledge(Base):
+    """Table to store user knowledge of dictionary words."""
+    __tablename__ = "user_dictionary_knowledge"
+    __tableargs__ = UniqueConstraint("user_id", "dictionary_content_id")
+
+    id = Column(BigInteger, autoincrement=True, primary_key=True)
+    user_id = Column(BigInteger, ForeignKey("bot_user.id"), nullable=False)
+    dictionary_content_id = Column(BigInteger, ForeignKey("dictionary_content.id"), nullable=False)
+    word_knowledge = Column(Integer, server_default="0", default=0)
+
+
 class DictionaryContent(Base):
     """Table to store translations."""
 
@@ -27,7 +38,6 @@ class DictionaryContent(Base):
     translation = Column(String, nullable=False)
     word_meaning = Column(String)
     translation_meaning = Column(String)
-    word_knowledge = Column(Integer, server_default="0", default=0)
 
 
 class Dictionary(Base):

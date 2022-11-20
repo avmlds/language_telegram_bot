@@ -59,7 +59,13 @@ UNION
         dictionary_content.word as word_representation,
         dictionary_content.translation,
         dictionary_content.translation as translation_representation,
-        word_knowledge
+        (
+            CASE 
+                WHEN u_d_k.word_knowledge IS NOT NULL 
+                THEN u_d_k.word_knowledge 
+                ELSE 0 
+            END
+        ) AS word_knowledge 
     FROM
     (
         SELECT
@@ -69,7 +75,10 @@ UNION
     ) AS u_d
     INNER JOIN dictionary_content
         ON u_d.dictionary_id = dictionary_content.dictionary_id
-    
+    LEFT JOIN user_dictionary_knowledge AS u_d_k
+        ON dictionary_content.id = u_d_k.dictionary_content_id AND
+            u_d.user_id = u_d_k.user_id
+
 ) AS data
 ORDER BY word_knowledge ASC
 LIMIT 10)

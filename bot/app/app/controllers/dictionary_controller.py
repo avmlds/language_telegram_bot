@@ -1,12 +1,13 @@
 import logging
 from typing import List
 
+from sqlalchemy.dialects.postgresql import insert
 from telebot.types import Message
 
 from app.controllers import BaseController
 from app.controllers.reward_controller import RewardController
 from app.exceptions.dictionary import DictionaryNotFoundException
-from app.models import UsersDictionaries, Dictionary, DictionaryContent
+from app.models import UsersDictionaries, Dictionary, DictionaryContent, UserDictionaryKnowledge
 
 
 logger = logging.getLogger(__name__)
@@ -18,6 +19,7 @@ class DictionaryController(BaseController):
     __base_model__ = UsersDictionaries
     __support_model__ = Dictionary
     __sub_model__ = DictionaryContent
+    __knowledge_model__ = UserDictionaryKnowledge
 
     def create_dictionary(self, title, description="", is_paid=True, price=0):
         return self.create_by_support_model(
@@ -106,7 +108,7 @@ class DictionaryController(BaseController):
         ]
 
     def get_dictionary_translations(self, *, user_id: int, word: str):
-        # FIXME: These are not translations, these are rows from the database
+        # FIXME: These are not translations but objects
         word = self.prepare_string(word)
         dictionaries_ids = self.get_user_dictionaries_ids(user_id)
 
@@ -122,11 +124,34 @@ class DictionaryController(BaseController):
             .all()
         )
 
+    def get_dictionary_knowledge_rows(self, user_id, word_dictionary_rows, translation_dictionary_rows):
+        dictionary_content_ids = []
+
+        # FIXME: This is horrible. I need something to improve this
+        for row in word_dictionary_rows + translation_dictionary_rows:
+            if row.id not in dictionary_content_ids:
+                dictionary_content_ids.append(row.id)
+                logger.info(row.id)
+                stmt = insert(self.__knowledge_model__).values(
+                    user_id=user_id,
+                    dictionary_content_id=row.id,
+                ).on_conflict_do_nothing(
+                    index_elements=["user_id", "dictionary_content_id"]
+                )
+                self._connection.execute(stmt)
+
+        return self._connection.query(self.__knowledge_model__).filter(
+            self.__knowledge_model__.dictionary_content_id.in_(dictionary_content_ids),
+            self.__knowledge_model__.user_id == user_id,
+        ).all()
+
     def modify_reward(self, user_id, word, reward_type):
-        word_rows = self.get_dictionary_translations(user_id=user_id, word=word)
-        translation_rows = self.get_dictionary_words(user_id=user_id, translation=word)
-        RewardController.modify_knowledge(word_rows, reward_type)
-        RewardController.modify_knowledge(translation_rows, reward_type)
+        word_rows = self.get_dictionary_translations(user_id=user_id, word=word)  # user_id, id
+        translation_rows = self.get_dictionary_words(user_id=user_id, translation=word)  # user_id, id
+
+        rows = self.get_dictionary_knowledge_rows(user_id, word_rows, translation_rows)
+        logger.info(rows)
+        RewardController.modify_knowledge(rows, reward_type)
         self._connection.commit()
 
     def get_dictionary_words(self, *, user_id: int, translation: str):

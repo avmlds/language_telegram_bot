@@ -5,6 +5,7 @@ from app.models.dictionaries import Dictionary  # noqa
 from app.models.dictionaries import Dictionary  # noqa
 from app.models.dictionaries import DictionaryContent  # noqa
 from app.models.dictionaries import UsersDictionaries  # noqa
+from app.models.dictionaries import UserDictionaryKnowledge # noqa
 from app.models.translations import UserTranslation  # noqa
 from app.models.users import BotUser  # noqa
 from app.models.users import UserState  # noqa
