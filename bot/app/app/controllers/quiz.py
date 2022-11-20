@@ -40,10 +40,10 @@ class QuizController:
     def reward_for_correct_answer(self, user_id, word, dictionary=False):
         self._pend_or_reward(user_id, word, dictionary, RewardController.ANSWER_REWARD)
 
-    def pend_or_reward_at_quiz(self, user_id, word, correctness):
+    def pend_or_reward_at_quiz(self, user_id, word, correctness, dictionary=False):
         if correctness == TRANSLATION_CORRECT:
-            return self.reward_for_correct_answer(user_id, word)
-        return self.pend_for_incorrect_answer(user_id, word)
+            return self.reward_for_correct_answer(user_id, word, dictionary=dictionary)
+        return self.pend_for_incorrect_answer(user_id, word, dictionary=dictionary)
 
     def get_word_pairs(self, user_id):
         return self.translation_controller.get_ordered_word_pair(user_id=user_id)

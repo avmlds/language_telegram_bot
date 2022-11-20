@@ -131,7 +131,6 @@ class DictionaryController(BaseController):
         for row in word_dictionary_rows + translation_dictionary_rows:
             if row.id not in dictionary_content_ids:
                 dictionary_content_ids.append(row.id)
-                logger.info(row.id)
                 stmt = insert(self.__knowledge_model__).values(
                     user_id=user_id,
                     dictionary_content_id=row.id,

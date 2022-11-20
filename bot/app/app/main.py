@@ -41,21 +41,7 @@ from templates import (
 
 logger = logging.getLogger()
 
-formatter = logging.Formatter(
-    '"TIME":"%(asctime)s",'
-    '"LEVEL_NAME":"%(levelname)s",'
-    '"FILE_MANE":"%(filename)s",'
-    '"MODULE":"%(module)s",'
-    '"FUNC_NAME":"%(funcName)s",'
-    '"LINE":"%(lineno)d",'
-    '"NAME":"%(name)s",'
-    '"PATHNAME":"%(pathname)s",'
-    '"PROCESS":"%(process)d",'
-    '"PROCESS_NAME":"%(processName)s",'
-    '"THREAD":"%(thread)d",'
-    '"THREAD_NAME":"%(threadName)s",'
-    '"MESSAGE":"%(message)s"'
-)
+formatter = logging.Formatter('%(asctime)s -- %(filename)s -- line_%(lineno)d : "%(message)s"')
 logger.setLevel(logging.INFO)
 handler = logging.StreamHandler()
 handler.setLevel(logging.INFO)
@@ -456,7 +442,9 @@ def operate_messages(message: Message, session):
         word_translations = translation_controller.get_correct_translations(
             message, word, dictionary_translations
         )
+        # FIXME: That's a mess
         quiz_controller.pend_or_reward_at_quiz(user_id=user_id, word=word, correctness=correctness)
+        quiz_controller.pend_or_reward_at_quiz(user_id=user_id, word=word, correctness=correctness, dictionary=True)
         try:
             next_quiz = quiz_controller.quiz(message)
         except DbEmptyException as e:
