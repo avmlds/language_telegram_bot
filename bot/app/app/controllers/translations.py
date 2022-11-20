@@ -3,8 +3,9 @@ from typing import Tuple, Optional, List
 
 from telebot.types import Message
 
+from app.controllers.reward_controller import RewardController
 from app.exceptions.database import WordTooLong, TranslationTooLong
-from app.sql_queries import SELECT_RANDOM_WORD_PAIR
+from app.sql_queries import SELECT_RANDOM_WORD_PAIR, SELECT_ORDERED_WORD_PAIR
 
 from app.controllers.base import BaseController
 from app.models.translations import UserTranslation
@@ -55,6 +56,7 @@ class TranslationController(BaseController):
         )
 
     def get_translations(self, *, user_id: int, word: str):
+        # FIXME: These are not translations, these are rows from the database
         word = self.prepare_string(word)
 
         return (
@@ -119,10 +121,27 @@ class TranslationController(BaseController):
         self.remove(id_=translation_model.id)
         return True
 
+    def modify_reward(self, user_id: int, word: str, reward_type: int):
+        word_rows = self.get_translations(user_id=user_id, word=word)
+        translation_rows = self.get_words(user_id=user_id, translation=word)
+        RewardController.modify_knowledge(word_rows, reward_type)
+        RewardController.modify_knowledge(translation_rows, reward_type)
+        self._connection.commit()
+
+    def get_ordered_word_pair(
+        self, user_id: int
+    ) -> Tuple[Optional[str], Optional[str], Optional[str], Optional[str]]:
+        return self._get_word_pair(user_id, SELECT_ORDERED_WORD_PAIR)
+
     def get_random_pair(
         self, user_id: int
     ) -> Tuple[Optional[str], Optional[str], Optional[str], Optional[str]]:
-        cursor = self._connection.execute(SELECT_RANDOM_WORD_PAIR, {"user_id": user_id})
+        return self._get_word_pair(user_id, SELECT_RANDOM_WORD_PAIR)
+
+    def _get_word_pair(
+        self, user_id: int, sql: str
+    ) -> Tuple[Optional[str], Optional[str], Optional[str], Optional[str]]:
+        cursor = self._connection.execute(sql, {"user_id": user_id})
         row = cursor.first()
 
         if not row:

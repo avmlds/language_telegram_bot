@@ -1,7 +1,7 @@
 """Urban dictionary add
 
 Revision ID: fd00a9a85aea
-Revises: 8d094425c5a4
+Revises: 493cb6086514
 Create Date: 2022-09-07 22:34:38.304457
 
 """
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = 'fd00a9a85aea'
-down_revision = '8d094425c5a4'
+down_revision = '493cb6086514'
 branch_labels = None
 depends_on = None
 

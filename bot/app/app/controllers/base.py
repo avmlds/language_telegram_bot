@@ -112,3 +112,20 @@ class BaseController:
     @classmethod
     def remove_by_sub_model(cls, id_: int):
         return cls._generic_remove(cls.__sub_model__, id_=id_)
+
+    @classmethod
+    def update(cls, id_: int, **kwargs):
+        return cls._generic_update(cls.__base_model__, id_=id_, **kwargs)
+
+    @classmethod
+    def _generic_update(cls, model, id_: int, **kwargs):
+        cls._connection.query(model).filter(
+            cls.__base_model__.id == id_
+        ).update(**kwargs)
+        try:
+            cls._connection.commit()
+            return True
+        except Exception as e:
+            logger.error(e)
+            cls._connection.rollback()
+            return False

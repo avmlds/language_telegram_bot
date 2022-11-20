@@ -4,6 +4,7 @@ from typing import List
 from telebot.types import Message
 
 from app.controllers import BaseController
+from app.controllers.reward_controller import RewardController
 from app.exceptions.dictionary import DictionaryNotFoundException
 from app.models import UsersDictionaries, Dictionary, DictionaryContent
 
@@ -105,6 +106,7 @@ class DictionaryController(BaseController):
         ]
 
     def get_dictionary_translations(self, *, user_id: int, word: str):
+        # FIXME: These are not translations, these are rows from the database
         word = self.prepare_string(word)
         dictionaries_ids = self.get_user_dictionaries_ids(user_id)
 
@@ -119,6 +121,13 @@ class DictionaryController(BaseController):
             )
             .all()
         )
+
+    def modify_reward(self, user_id, word, reward_type):
+        word_rows = self.get_dictionary_translations(user_id=user_id, word=word)
+        translation_rows = self.get_dictionary_words(user_id=user_id, translation=word)
+        RewardController.modify_knowledge(word_rows, reward_type)
+        RewardController.modify_knowledge(translation_rows, reward_type)
+        self._connection.commit()
 
     def get_dictionary_words(self, *, user_id: int, translation: str):
         translation = self.prepare_string(translation)

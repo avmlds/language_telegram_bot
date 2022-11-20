@@ -1,7 +1,7 @@
 """Init 
 
 Revision ID: 493cb6086514
-Revises: af473c169e25
+Revises: None
 Create Date: 2022-09-03 19:48:43.157470
 
 """

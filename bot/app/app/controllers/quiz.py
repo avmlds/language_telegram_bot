@@ -5,17 +5,48 @@ import random
 from telebot.types import Message
 
 from app.constants import states
+from app.controllers.reward_controller import RewardController
 from app.exceptions.database import DbEmptyException
-from app.templates import TRANSLATION_QUIZ_STARTED
-
+from app.templates import TRANSLATION_QUIZ_STARTED, TRANSLATION_CORRECT
 
 logger = logging.getLogger(__name__)
 
 
 class QuizController:
-    def __init__(self, user_controller, translation_controller):
+    def __init__(self, user_controller, translation_controller, dictionary_controller):
         self.user_controller = user_controller
         self.translation_controller = translation_controller
+        self.dictionary_controller = dictionary_controller
+
+    def _pend_or_reward(self, user_id, word, dictionary, reward_type):
+        controller = self.translation_controller
+        if dictionary:
+            controller = self.dictionary_controller
+        controller.modify_reward(
+            user_id=user_id,
+            word=word,
+            reward_type=reward_type,
+        )
+
+    def pend_for_hint(self, user_id, word, dictionary=False):
+        self._pend_or_reward(user_id, word, dictionary, RewardController.HINT_PEND)
+
+    def pend_for_translation(self, user_id, word, dictionary=False):
+        self._pend_or_reward(user_id, word, dictionary, RewardController.TRANSLATION_PEND)
+
+    def pend_for_incorrect_answer(self, user_id, word, dictionary=False):
+        self._pend_or_reward(user_id, word, dictionary, RewardController.ANSWER_PEND)
+
+    def reward_for_correct_answer(self, user_id, word, dictionary=False):
+        self._pend_or_reward(user_id, word, dictionary, RewardController.ANSWER_REWARD)
+
+    def pend_or_reward_at_quiz(self, user_id, word, correctness):
+        if correctness == TRANSLATION_CORRECT:
+            return self.reward_for_correct_answer(user_id, word)
+        return self.pend_for_incorrect_answer(user_id, word)
+
+    def get_word_pairs(self, user_id):
+        return self.translation_controller.get_ordered_word_pair(user_id=user_id)
 
     def quiz(self, message: Message):
 
@@ -25,7 +56,7 @@ class QuizController:
             user_state=states.QUIZ_STATE, message=message
         )
 
-        pairs = self.translation_controller.get_random_pair(user_id=message.chat.id)
+        pairs = self.get_word_pairs(user_id=message.chat.id)
         (
             word,
             word_representation,

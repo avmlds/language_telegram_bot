@@ -6,6 +6,7 @@ from sqlalchemy import (
     UniqueConstraint,
     DateTime,
     func,
+    Integer,
 )
 
 from app.database.base_class import Base
@@ -31,4 +32,5 @@ class UserTranslation(Base):
     word = Column(String(300), nullable=False)
     translation_representation = Column(String(300))
     translation = Column(String(300), nullable=False)
+    word_knowledge = Column(Integer, server_default="0", default=0)
     created_at = Column(DateTime, server_default=func.now())

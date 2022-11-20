@@ -9,6 +9,7 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
     DateTime,
+    Integer,
 )
 
 from app.database.base_class import Base
@@ -26,6 +27,7 @@ class DictionaryContent(Base):
     translation = Column(String, nullable=False)
     word_meaning = Column(String)
     translation_meaning = Column(String)
+    word_knowledge = Column(Integer, server_default="0", default=0)
 
 
 class Dictionary(Base):

@@ -42,7 +42,6 @@ from templates import (
 logger = logging.getLogger()
 
 formatter = logging.Formatter(
-    "{"
     '"TIME":"%(asctime)s",'
     '"LEVEL_NAME":"%(levelname)s",'
     '"FILE_MANE":"%(filename)s",'
@@ -56,7 +55,6 @@ formatter = logging.Formatter(
     '"THREAD":"%(thread)d",'
     '"THREAD_NAME":"%(threadName)s",'
     '"MESSAGE":"%(message)s"'
-    "}"
 )
 logger.setLevel(logging.INFO)
 handler = logging.StreamHandler()
@@ -141,6 +139,7 @@ def start_quiz(query: CallbackQuery, session):
         quiz = QuizController(
             user_controller=UserController(connection=session),
             translation_controller=TranslationController(connection=session),
+            dictionary_controller=DictionaryController(connection=session),
         )
         quiz_message = quiz.quiz(message)
     except DbEmptyException as e:
@@ -226,7 +225,9 @@ def get_quiz_hint(query: CallbackQuery, session):
     logger.info("User %s pressed HINT", message.chat.id)
 
     quiz_controller = QuizController(
-        user_controller=user_controller, translation_controller=translation_controller
+        user_controller=user_controller,
+        translation_controller=translation_controller,
+        dictionary_controller=dictionary_controller,
     )
 
     user_state_data = user_controller.get_user_state_data(message)
@@ -241,8 +242,10 @@ def get_quiz_hint(query: CallbackQuery, session):
 
     if list_translations:
         hint_string = quiz_controller.get_hint_string(list_translations[0])
+        quiz_controller.pend_for_hint(user_id=message.chat.id, word=word)
     elif dictionary_translations:
         hint_string = quiz_controller.get_hint_string(dictionary_translations[0])
+        quiz_controller.pend_for_hint(user_id=message.chat.id, word=word, dictionary=True)
     else:
         logger.info("User %s no hint available for a word %s", message.chat.id, word)
 
@@ -265,6 +268,10 @@ def get_quiz_full_translation(query: CallbackQuery, session):
     dictionary_controller = DictionaryController(connection=session)
     translation_controller = TranslationController(connection=session)
 
+    quiz_controller = QuizController(
+        user_controller, translation_controller, dictionary_controller
+    )
+
     user_state_data = user_controller.get_user_state_data(message)
     # TODO: refactor usage to property instead of direct access to data
     word = user_state_data["data"]
@@ -277,6 +284,8 @@ def get_quiz_full_translation(query: CallbackQuery, session):
     string_translations = translation_controller.get_correct_translations(
         message, word, dictionary_translations
     )
+    quiz_controller.pend_for_translation(user_id=message.chat.id, word=word)
+    quiz_controller.pend_for_translation(user_id=message.chat.id, word=word, dictionary=True)
 
     bot.edit_message_text(
         chat_id=message.chat.id,
@@ -378,7 +387,7 @@ def operate_messages(message: Message, session):
     user_controller = UserController(connection=session)
     dictionary_controller = DictionaryController(connection=session)
     translation_controller = TranslationController(connection=session)
-    quiz_controller = QuizController(user_controller, translation_controller)
+    quiz_controller = QuizController(user_controller, translation_controller, dictionary_controller)
     user_state = user_controller.get_user_state(message)
 
     if user_state is None:
@@ -432,11 +441,22 @@ def operate_messages(message: Message, session):
         user_state_data = user_controller.get_user_state_data(message)
         word = user_state_data["data"]
 
-        translations = dictionary_controller.get_correct_dictionary_translation_list(
+        dictionary_translations = dictionary_controller.get_correct_dictionary_translation_list(
             message, word
         )
 
         correctness = TRANSLATION_INCORRECT
+        if translation_controller.check_translation(
+            user_id=user_id, word=word, translation=message.text
+        ):
+            correctness = TRANSLATION_CORRECT
+        elif translation_controller.prepare_string(message.text) in dictionary_translations:
+            correctness = TRANSLATION_CORRECT
+
+        word_translations = translation_controller.get_correct_translations(
+            message, word, dictionary_translations
+        )
+        quiz_controller.pend_or_reward_at_quiz(user_id=user_id, word=word, correctness=correctness)
         try:
             next_quiz = quiz_controller.quiz(message)
         except DbEmptyException as e:
@@ -445,19 +465,6 @@ def operate_messages(message: Message, session):
                 text=str(e),
                 reply_markup=Keyboard().default_keyboard,
             )
-
-        if translation_controller.check_translation(
-            user_id=user_id, word=word, translation=message.text
-        ):
-            correctness = TRANSLATION_CORRECT
-        elif translation_controller.prepare_string(message.text) in translations:
-            correctness = TRANSLATION_CORRECT
-
-        word_translations = translation_controller.get_correct_translations(
-            message, word, translations
-        )
-
-        logger.info("User %s translation %s", message.chat.id, correctness)
 
         return bot.send_message(
             chat_id=chat_id,
